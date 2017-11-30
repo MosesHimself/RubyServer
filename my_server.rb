@@ -123,10 +123,3 @@ module Rack
   end
 end
 Rack::Handler.register('my_server', 'Rack::Handler::MyServer')
-
-# Sinatra app
-set :server, :my_server
-
-get '/' do
-  'Hello world!'
-end

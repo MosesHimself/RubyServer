@@ -6,6 +6,10 @@ HOST       = "localhost"
 
 MAXCLIENTS = 3
 
+STATUS_CODES = {200 => 'OK',
+                500 => 'Internal Server Error',
+                404 => 'Not Found'}
+
 # Files will be served from this directory
 WEB_ROOT = './public'
 
