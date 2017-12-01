@@ -4,6 +4,7 @@ require 'sinatra'
 require 'uri'
 require 'rack/lobster'
 require "./CONFIG"
+require_relative "test"
 
 # Simple, rack-compliant web server
 class MyServer
@@ -46,7 +47,7 @@ class MyServer
 
   def start
     @server = TCPServer.new PORT
-    puts 'Listening on 8080...'
+    puts 'Listening on 17714...'
 
     # when the server receives a request
     while session = server.accept
@@ -54,6 +55,7 @@ class MyServer
       STDERR.puts request_line
 
       env = new_env(request_line)
+
       status, headers, body = app.call(env)
 
       path = requested_file(request_line)
