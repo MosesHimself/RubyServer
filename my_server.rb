@@ -4,7 +4,6 @@ require 'sinatra'
 require 'uri'
 require 'rack/lobster'
 require "./CONFIG"
-require_relative "test"
 
 # Simple, rack-compliant web server
 class MyServer
@@ -78,6 +77,7 @@ class MyServer
           IO.copy_stream(file, session)
         end
       end
+
 
       session.close
     end
