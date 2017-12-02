@@ -1,5 +1,4 @@
 
-
 class AppServer
 
   def initialize
@@ -7,15 +6,15 @@ class AppServer
   end
 
 
-  def go(path, env=nil)
-      if ((!@paths.keys.include?(route_info)) && env)
+  def go(pathI, env=nil)
+      if ((!@paths.keys.include?(pathI)) && env)
           @app.call(env)
       else
-        http_method = route_info[0]
-        url = route_info[1]
+        method = pathI[0]
+        url = pathI[1]
 
         @paths.each do |path, response|
-          if (route[0] == http_method && path[1] == url)
+          if (path[0] == method && path[1] == url)
             response[2][0] = response[2][0].call
             return response
           end
@@ -30,17 +29,18 @@ class AppServer
     response.body = code
 
     if redirects[:location]
+      STDERR.puts 'got a redirect fam at' + redirects[:location]
       response.headers["Location"] = redirects[:location]
       response.status = '302'
     end
 
-    @paths[[http_method, path]] = [response.status, response.headers, [response.body]]
+    @paths[[method, path]] = [response.status, response.headers, [response.body]]
   end
 
   def formPath(env)
     request = Rack::Request.new(env)
     path = request.path_info
-    [method, path]
+    [request.request_method, path]
   end
 
 end

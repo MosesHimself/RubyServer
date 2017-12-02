@@ -46,7 +46,10 @@ class MyServer
 
   def start
     @server = TCPServer.new PORT
-    puts 'Listening on 17714...'
+    STDERR.puts 'Listening on 17714...'
+
+    $client_handlers = {}
+    $messages = []
 
     # when the server receives a request
     while session = server.accept
@@ -60,7 +63,6 @@ class MyServer
       path = requested_file(request_line)
       path = File.join(path, 'index.html') if File.directory?(path)
       if File.exist?(path) && !File.directory?(path)
-
         File.open(path, "rb") do |file|
 
           # response line
@@ -76,9 +78,19 @@ class MyServer
           end
           IO.copy_stream(file, session)
         end
+      else
+        message = "File not found\n"
+
+        # respond with a 404 error code to indicate the file does not exist
+        session.print "HTTP/1.1 404 Not Found\r\n" +
+                     "Content-Type: text/plain\r\n" +
+                     "Content-Length: #{message.size}\r\n" +
+                     "Connection: close\r\n"
+
+        session.print "\r\n"
+
+        session.print message
       end
-
-
       session.close
     end
   end
