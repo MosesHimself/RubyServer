@@ -1,113 +1,66 @@
 require 'socket'
-require 'uri'
-require 'rack'
-require 'rack/lobster'
+require './processes'
 require "./CONFIG"
 
-# This helper function parses the extension of the
-# requested file and then looks up its content type.
+Thread.abort_on_exception = true
 
-def content_type(path)
-  ext = File.extname(path).split(".").last
-  CONTENT_TYPE_MAPPING.fetch(ext, DEFAULT_CONTENT_TYPE)
-end
+puts "Starting server on port #{PORT} with pid #{Process.pid}"
 
-# This helper function parses the Request-Line and
-# generates a path to a file on the server.
+server = TCPServer.open(PORT)
+cWriters = []
+users = []
+mReader, mWriter = IO.pipe
 
-def requested_file(request_line)
-  if request_line != nil
+writeToProcesses(mReader, cWriters)
 
-    request_uri  = request_line.split(" ")[1]
-    path         = URI.unescape(URI(request_uri).path)
+loop do
+  while socket = server.accept
 
-    clean = []
+    cReader, cWriter = IO.pipe
+    cWriters.push(cWriter)
 
-    # Split the path into components
-    parts = path.split("/")
+    username = read(socket)
+    users.push(username)
+    # Fork child process, everything in the fork block only runs in the child process
+    fork do
+      puts "#{Process.pid}: Accepted connection from #{username}"
 
-    parts.each do |part|
-      # skip any empty or current directory (".") path components
-      next if part.empty? || part == '.'
-      # If the path component goes up one directory level (".."),
-      # remove the last clean component.
-      # Otherwise, add the component to the Array of clean components
-      part == '..' ? clean.pop : clean << part
+      writeToClient(username, cReader, socket)
+
+      # Read incoming messages from the client.
+      while message = read(socket)
+        time = Time.new
+        year = time.year    # => Year of the date
+        month = time.month   # => Month of the date (1 to 12)
+        day = time.day     # => Day of the date (1 to 31 )
+        hour = time.hour    # => 23: 24-hour clock
+        min = time.min     # => 59
+        sec = time.sec     # => 59
+        #at #{hour}:#{min} on #{day}/#{month}/#{year}:
+
+        #if else tree for the incoming message from client to server
+        if message.start_with?("(WHO)")
+          message = ''
+          users.each do |usr|
+            message += "#{usr} "
+          end
+          mWriter.puts "/#{username}(WHO): #{message} are in the chat!"
+          puts "#{username}(WHO): #{message} are in the chat!"
+        else
+          if message.start_with?("(")
+            
+          else
+            mWriter.puts "#{username}: #{message}"
+            puts "#{username}: #{message}"
+          end
+        end
+
+
+      end
+
+      puts "#{Process.pid}: Disconnected #{username}"
+      mWriter.puts "#{username} has disconnected!"
     end
 
-    # return the web root joined to the clean path
-    File.join(WEB_ROOT, *clean)
   end
-end
-
-def new_env(request)
-  if request
-    # split the method and path
-    method, full_path = request.split(' ')
-    # split path even further
-    path, query = full_path.split('?')
-
-    input = StringIO.new
-    input.set_encoding 'ASCII-8BIT'
-
-    # pass these shits into the rack environment hash
-    {
-      'REQUEST_METHOD' => method,
-      'PATH_INFO' => path,
-      'QUERY_STRING' => query || '',
-      'SERVER_NAME' => HOST,
-      'SERVER_PORT' => PORT,
-      'REMOTE_ADDR' => '127.0.0.1',
-      'rack.version' => [1,3],
-      'rack.input' => input,
-      'rack.errors' => $stderr,
-      'rack.multithread' => false,
-      'rack.multiprocess' => false,
-      'rack.run_once' => false,
-      'rack.url_scheme' => 'http'
-    }
-  end
-end
-
-# Except where noted below, the general approach of
-# handling requests and generating responses is
-# similar to that of the "Hello World" example
-# shown earlier.
-
-app = Proc.new do |env|
-  ['200', {'Content-Type' => 'text/html'}, ["Hello world! The time is #{Time.now}"]]
-end
-#app = Rack::Lobster.new
-server = TCPServer.new PORT
-
-# when the server receives a request
-while session = server.accept
-  request_line = session.gets
-  STDERR.puts request_line
-
-  env = new_env(request_line)
-  status, headers, body = app.call(env)
-
-  path = requested_file(request_line)
-  path = File.join(path, 'index.html') if File.directory?(path)
-  if File.exist?(path) && !File.directory?(path)
-
-    File.open(path, "rb") do |file|
-
-      # response line
-      session.print "HTTP/1.1 #{status}\r\n"
-      # headers
-      headers.each do |key, value|
-        session.print "#{key}: #{value}\r\n"
-      end
-      session.print "\r\n"
-
-      body.each do |part|
-        session.print part
-      end
-      IO.copy_stream(file, session)
-    end
-  end
-
-  session.close
 end
