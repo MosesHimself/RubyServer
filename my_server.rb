@@ -8,6 +8,8 @@ require "./CONFIG"
 # Simple, rack-compliant web server
 class MyServer
 
+  # these here are symbols
+  # attr_reader makes these attributes, aka readable from outside
   attr_reader :app, :server
 
   def initialize(app)

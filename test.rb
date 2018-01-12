@@ -5,7 +5,6 @@ class AppServer
       @paths={}
   end
 
-
   def go(pathI, env=nil)
       if ((!@paths.keys.include?(pathI)) && env)
           @app.call(env)
