@@ -81,7 +81,7 @@ class MyServer
           IO.copy_stream(file, session)
         end
       else
-        message = "File not found\n"
+        message = "File not found!\n"
 
         # respond with a 404 error code to indicate the file does not exist
         session.print "HTTP/1.1 404 Not Found\r\n" +
