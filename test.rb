@@ -5,12 +5,13 @@ class AppServer
       @paths={}
   end
 
-  def go(pathI, env=nil)
-      if ((!@paths.keys.include?(pathI)) && env)
+  def go(pathRoute, env=nil)
+      if ((!@paths.keys.include?(pathRoute)) && env)
+          #STDERR.puts env
           @app.call(env)
       else
-        method = pathI[0]
-        url = pathI[1]
+        method = pathRoute[0]
+        url = pathRoute[1]
 
         @paths.each do |path, response|
           if (path[0] == method && path[1] == url)
@@ -23,7 +24,9 @@ class AppServer
       end
     end
 
-  def mkPath(method, path, redirects={}, &code)
+  #this function puts the code block into the path array and can be accessed by
+  # the method and path
+  def makePath(method, path, redirects={}, &code)
     response = Rack::Response.new
     response.body = code
 
@@ -36,10 +39,13 @@ class AppServer
     @paths[[method, path]] = [response.status, response.headers, [response.body]]
   end
 
+  #this just returns the method and path in a tuple
   def formPath(env)
     request = Rack::Request.new(env)
-    path = request.path_info
-    [request.request_method, path]
+    if request.path_info
+      path = request.path_info
+      [request.request_method, path]
+    end
   end
 
 end

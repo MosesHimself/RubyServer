@@ -16,10 +16,72 @@ class MyServer
     @app = app
   end
 
-  def content_type(path)
-    ext = File.extname(path).split(".").last
-    CONTENT_TYPE_MAPPING.fetch(ext, DEFAULT_CONTENT_TYPE)
+  def start
+
+    @server = TCPServer.new PORT
+    STDERR.puts 'Listening on 17714...'
+    loop do
+      # when the server receives a request
+      Thread.fork(server.accept) do |session|
+        STDERR.puts '--'
+        STDERR.puts "Starting Thread."
+        if (request_line = session.gets) != "\r\n"
+
+          STDERR.puts request_line
+
+          if request_line != "GET /favicon.ico HTTP/1.1\r\n"
+            env = new_env(request_line)
+            STDERR.puts "New env made. Calling app now!"
+            status, headers, body = app.call(env)
+          end
+
+
+          if path = requested_file(request_line)
+            path = File.join(path, 'index.html') if File.directory?(path)
+
+            if File.exist?(path) && !File.directory?(path)
+              File.open(path, "rb") do |file|
+
+                # response line
+                session.print "HTTP/1.1 #{status}\r\n"
+
+                # headers
+                if headers
+                  headers.each do |key, value|
+                    session.print "#{key}: #{value}\r\n"
+                  end
+                end
+                session.print "\r\n"
+
+                # body
+                if body
+                  body.each do |part|
+                    session.print part
+                  end
+                end
+
+                IO.copy_stream(file, session)
+              end
+            else
+              error = "File not found!\n"
+              # respond with a 404 error code to indicate the file does not exist
+              session.print "HTTP/1.1 404 Not Found\r\n" +
+                            "Content-Type: text/plain\r\n" +
+                            "Content-Length: #{message.size}\r\n" +
+                            "Connection: close\r\n"
+              session.print "\r\n"
+              session.print error
+            end
+          end
+        else
+
+        end
+        STDERR.puts "Closing Thread."
+        session.close
+      end
+    end
   end
+
 
   def requested_file(request_line)
     if request_line != nil
@@ -46,57 +108,6 @@ class MyServer
     end
   end
 
-  def start
-    @server = TCPServer.new PORT
-    STDERR.puts 'Listening on 17714...'
-
-    $client_handlers = {}
-    $messages = []
-
-    # when the server receives a request
-    while session = server.accept
-      request_line = session.gets
-      STDERR.puts request_line
-
-      env = new_env(request_line)
-
-      status, headers, body = app.call(env)
-
-      path = requested_file(request_line)
-      path = File.join(path, 'index.html') if File.directory?(path)
-      if File.exist?(path) && !File.directory?(path)
-        File.open(path, "rb") do |file|
-
-          # response line
-          session.print "HTTP/1.1 #{status}\r\n"
-          # headers
-          headers.each do |key, value|
-            session.print "#{key}: #{value}\r\n"
-          end
-          session.print "\r\n"
-
-          body.each do |part|
-            session.print part
-          end
-          IO.copy_stream(file, session)
-        end
-      else
-        message = "File not found!\n"
-
-        # respond with a 404 error code to indicate the file does not exist
-        session.print "HTTP/1.1 404 Not Found\r\n" +
-                     "Content-Type: text/plain\r\n" +
-                     "Content-Length: #{message.size}\r\n" +
-                     "Connection: close\r\n"
-
-        session.print "\r\n"
-
-        session.print message
-      end
-      session.close
-    end
-  end
-
   def new_env(request)
     if request
       # split the method and path
@@ -118,7 +129,7 @@ class MyServer
         'rack.version' => [1,3],
         'rack.input' => input,
         'rack.errors' => $stderr,
-        'rack.multithread' => false,
+        'rack.multithread' => true,
         'rack.multiprocess' => false,
         'rack.run_once' => false,
         'rack.url_scheme' => 'http'
@@ -133,6 +144,7 @@ module Rack
     class MyServer
       def self.run(app, options = {})
         server = ::MyServer.new(app)
+        STDERR.puts 'Starting server...'
         server.start
       end
     end
