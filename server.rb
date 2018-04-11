@@ -23,32 +23,43 @@ module Emerald
 
         thread = Thread.start(@server.accept) do |socket|
 
+          if (requestLine = socket.gets) != "\r\n"
+            begin
+              puts requestLine
+              #starting our response
+              method = requestLine.split(" ")[1]
 
+              path = requested_file(requestLine)
+              path = File.join(path, 'index.html') if File.directory?(path)
 
-          if (requestLine = socket.gets) != "\r\n" || requestLine != ""
-            puts requestLine
-            #starting our response
-            method = requestLine.split(" ")[1]
-
-            path = requested_file(requestLine)
-            path = File.join(path, 'index.html') if File.directory?(path)
-
-            if File.exist?(path) && !File.directory?(path)
-              File.open(path, "rb") do |file|
-                puts "We got a file!"
-                socket.print "HTTP/1.1 200 OK\r\n" +
-                             "Content-Type: #{content_type(file)}\r\n" +
-                             "Content-Length: #{file.size}\r\n" +
-                             "Connection: close\r\n"
+              if File.exist?(path) && !File.directory?(path)
+                File.open(path, "rb") do |file|
+                  puts "We got a file!"
+                  socket.print "HTTP/1.1 200 OK\r\n" +
+                               "Content-Type: #{content_type(file)}\r\n" +
+                               "Content-Length: #{file.size}\r\n" +
+                               "Connection: close\r\n"
+                  socket.print "\r\n"
+                  if method != "HEAD"
+                    IO.copy_stream(file, socket)
+                  end
+                end
+              else
+                puts "We dont have a file..."
+                error = "File not found!\n"
+                # respond with a 404 error code to indicate the file does not exist
+                socket.print "HTTP/1.1 404 Not Found\r\n" +
+                              "Content-Type: text/plain\r\n" +
+                              "Content-Length: #{error.size}\r\n" +
+                              "Connection: close\r\n"
                 socket.print "\r\n"
-                IO.copy_stream(file, socket)
-
+                socket.print error
               end
-            else
-              puts "We dont have a file..."
-              error = "File not found!\n"
+            rescue
+              puts "We have an error..."
+              error = "There has been an internal server error!\n"
               # respond with a 404 error code to indicate the file does not exist
-              socket.print "HTTP/1.1 404 Not Found\r\n" +
+              socket.print "HTTP/1.1 500 Internal Server Error\r\n" +
                             "Content-Type: text/plain\r\n" +
                             "Content-Length: #{error.size}\r\n" +
                             "Connection: close\r\n"
@@ -56,9 +67,9 @@ module Emerald
               socket.print error
             end
 
-            socket.close
-            puts "..end of thread."
           end
+          socket.close
+          puts "..end of thread."
         end
         thread.join
       end
