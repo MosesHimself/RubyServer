@@ -6,7 +6,7 @@ I am working on building a full framework that will allow for Ruby apps to run o
 - Currently I have made a file server(found in my_server.rb) that will respond to most HTTP requests like GET, HEAD, POST, etc. All accessible web pages are located in the public file and no client can access any other directories. I still have to add multithreading to allow for multiple clients to access the server at one time though. -UPDATE- it now supports multithreading
 - Connecting this web server and a potential ruby app is the app server I created(found in test.rb). This uses a protocol that takes the first line of the HTTP request and will use the method and path to locate a certain block of ruby code to be ran. These ruby code block reside in any class that inherits from the App Server class, such as the class found in chatroom.rb. To initialize these ruby blocks, just use the mkPath method as follows
 ``` Ruby
-  mkPath('POST','/chatroom/send') do
+  makePath('POST','/chatroom/send') do
     # put your code here
   end
 ```

@@ -1,6 +1,6 @@
 #-Do your configuring here boys-#
 
-PORT       = 17714
+PORT       = 5678
 
 HOST       = "localhost"
 
@@ -17,6 +17,7 @@ WEB_ROOT = './public'
 CONTENT_TYPE_MAPPING = {
   'html' => 'text/html',
   'txt'  => 'text/plain',
+  'zip'  => 'applicaiton/zip',
   'png'  => 'image/png',
   'jpg'  => 'image/jpeg',
   'cgi'  => 'script/cgi',

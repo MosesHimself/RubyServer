@@ -2,7 +2,6 @@ require 'socket'
 require 'rack'
 require 'sinatra'
 require 'uri'
-require 'rack/lobster'
 require "./CONFIG"
 
 # Simple, rack-compliant web server
@@ -19,22 +18,21 @@ class MyServer
   def start
 
     @server = TCPServer.new PORT
-    STDERR.puts 'Listening on 17714...'
+    STDERR.puts "Listening on #{PORT}..."
+
     loop do
+
       # when the server receives a request
       Thread.fork(server.accept) do |session|
-        STDERR.puts '--'
         STDERR.puts "Starting Thread."
         if (request_line = session.gets) != "\r\n"
-
           STDERR.puts request_line
 
-          if request_line != "GET /favicon.ico HTTP/1.1\r\n"
+          #if request_line != "GET /favicon.ico HTTP/1.1\r\n"
             env = new_env(request_line)
             STDERR.puts "New env made. Calling app now!"
             status, headers, body = app.call(env)
-          end
-
+          #end
 
           if path = requested_file(request_line)
             path = File.join(path, 'index.html') if File.directory?(path)
